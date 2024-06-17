@@ -3,6 +3,7 @@ val logback_version: String by project
 val exposed_version: String by project
 val h2_version: String by project
 val postgres_version: String by project
+val ktor_version: String by project
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -35,6 +36,9 @@ dependencies {
     implementation("org.postgresql:postgresql:$postgres_version")
     implementation("io.ktor:ktor-server-netty-jvm")
     implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("io.ktor:ktor-client-core:$ktor_version")
+    implementation("io.ktor:ktor-client-cio:$ktor_version")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
     testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
