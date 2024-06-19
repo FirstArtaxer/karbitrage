@@ -1,7 +1,10 @@
 package com.artaxer.service
 
-interface PriceExtractor {
-    fun getExtractor(): (String) -> Map<String, Double>
+import kotlinx.serialization.json.Json
+
+abstract class PriceExtractor {
+    val jsonParser = Json { ignoreUnknownKeys = true }
+    abstract fun getExtractor(): (String) -> Map<String, Double>
 }
 
 enum class CryptoCode {
