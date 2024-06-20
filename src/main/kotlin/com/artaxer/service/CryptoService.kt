@@ -11,7 +11,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 @Serializable
 data class CryptoDto(
-    val code: String,
+    val symbol: String,
     val price: Double,
     val exchange: String,
     @Serializable(with = LocalDateTimeIso8601Serializer::class)
@@ -65,11 +65,26 @@ class CryptoService(private val database: Database) {
             .map {
                 val codeAndPrice = it.split("=")
                 CryptoDto(
-                    code = codeAndPrice.first(),
+                    symbol = codeAndPrice.first(),
                     price = codeAndPrice.last().toDouble(),
                     exchange = exchangeName,
-                    dateTime = dateTime
+                    dateTime = dateTime.truncateToMinute()
                 )
             }
     }
+}
+
+/**
+ * Extension function for kotlinx.datetime.LocalDateTime which sets seconds and nanoseconds to 00.
+ */
+fun LocalDateTime.truncateToMinute(): LocalDateTime {
+    return LocalDateTime(
+        this.year,
+        this.month,
+        this.dayOfMonth,
+        this.hour,
+        this.minute,
+        0,
+        0
+    )
 }

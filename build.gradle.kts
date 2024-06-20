@@ -41,6 +41,7 @@ dependencies {
     implementation("io.ktor:ktor-client-core:$ktor_version")
     implementation("io.ktor:ktor-client-cio:$ktor_version")
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+    implementation("io.github.classgraph:classgraph:4.8.154")
     testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
