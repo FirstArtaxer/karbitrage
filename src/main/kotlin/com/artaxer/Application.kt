@@ -85,17 +85,21 @@ fun Application.fetchAndSaveData() {
             val dateTime = LocalDateTime.now().toKotlinLocalDateTime()
             exchangesWithFunctions.forEach { exchange ->
                 launch(context) {
-                    log.info("${exchange.first} fetched!")
-                    val exchangePrices =
-                        priceService.getPrices(httpRequest = exchange.second, extractor = exchange.third)
-                    cryptoService.save(
-                        exchangePrices = Triple(
-                            exchange.first,
-                            exchangePrices.parseToString(),
-                            dateTime
+                    runCatching {
+                        log.info("${exchange.first} fetched!")
+                        val exchangePrices =
+                            priceService.getPrices(httpRequest = exchange.second, extractor = exchange.third)
+                        cryptoService.save(
+                            exchangePrices = Triple(
+                                exchange.first,
+                                exchangePrices.parseToString(),
+                                dateTime
+                            )
                         )
-                    )
-                    log.info("${exchange.first} saved!")
+                        log.info("${exchange.first} saved!")
+                    }.onFailure {
+                        log.error("${exchange.first} cannot saved! - ${it.stackTraceToString()}")
+                    }
                 }
             }
         }
