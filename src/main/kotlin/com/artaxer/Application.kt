@@ -49,7 +49,9 @@ fun Application.configureRouting() {
         get("crypto/prices") {
             val fromDateTime = call.parameters["from"]?.toLocalDateTime() ?: error("from parameter should be filled")
             val toDateTime = call.parameters["to"]?.toLocalDateTime() ?: error("to parameter should be filled")
-            val crypto = cryptoService.getPricesHistory(fromDateTime = fromDateTime,toDateTime = toDateTime)
+            val symbol = call.parameters["symbol"] ?: error("symbol parameter should be filled")
+            val crypto =
+                cryptoService.getPricesHistory(fromDateTime = fromDateTime, toDateTime = toDateTime, symbol = symbol)
             call.respond(HttpStatusCode.OK, crypto)
         }
     }

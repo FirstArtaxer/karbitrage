@@ -44,14 +44,15 @@ class CryptoService(private val database: Database) {
         }[CryptoEntity.id]
     }
 
-    suspend fun getPricesHistory(fromDateTime: LocalDateTime,toDateTime:LocalDateTime): List<CryptoDto> {
+    suspend fun getPricesHistory(fromDateTime: LocalDateTime,toDateTime:LocalDateTime,symbol: String): List<CryptoDto> {
         return dbQuery {
             CryptoEntity.select { CryptoEntity.dateTime greaterEq fromDateTime and(CryptoEntity.dateTime lessEq toDateTime) }
                 .flatMap {
                     toCryptoDtoList(
                         exchangeName = it[CryptoEntity.exchange],
                         rawPrices = it[CryptoEntity.prices],
-                        dateTime = it[CryptoEntity.dateTime]
+                        dateTime = it[CryptoEntity.dateTime],
+                        symbol = symbol
                     )
                 }
         }
@@ -59,9 +60,11 @@ class CryptoService(private val database: Database) {
     private fun toCryptoDtoList(
         exchangeName: String,
         rawPrices: String,
-        dateTime: LocalDateTime
+        dateTime: LocalDateTime,
+        symbol: String
     ): List<CryptoDto> {
         return rawPrices.split(",")
+            .filter { it.lowercase().startsWith(symbol.lowercase()) }
             .map {
                 val codeAndPrice = it.split("=")
                 CryptoDto(
