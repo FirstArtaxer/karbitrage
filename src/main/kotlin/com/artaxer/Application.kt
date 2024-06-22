@@ -47,9 +47,9 @@ fun Application.configureRouting() {
     val cryptoService = CryptoService(database = configureDatabases())
     routing {
         get("crypto/prices") {
-            val fromDateTime = call.parameters["fromDateTime"]?.toLocalDateTime() ?: LocalDateTime.now().minusDays(7)
-                .toKotlinLocalDateTime()
-            val crypto = cryptoService.getHistoryPrices(fromDateTime = fromDateTime)
+            val fromDateTime = call.parameters["from"]?.toLocalDateTime() ?: error("from parameter should be filled")
+            val toDateTime = call.parameters["to"]?.toLocalDateTime() ?: error("to parameter should be filled")
+            val crypto = cryptoService.getPricesHistory(fromDateTime = fromDateTime,toDateTime = toDateTime)
             call.respond(HttpStatusCode.OK, crypto)
         }
     }

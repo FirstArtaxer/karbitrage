@@ -44,9 +44,9 @@ class CryptoService(private val database: Database) {
         }[CryptoEntity.id]
     }
 
-    suspend fun getHistoryPrices(fromDateTime: LocalDateTime): List<CryptoDto> {
+    suspend fun getPricesHistory(fromDateTime: LocalDateTime,toDateTime:LocalDateTime): List<CryptoDto> {
         return dbQuery {
-            CryptoEntity.select { CryptoEntity.dateTime greaterEq fromDateTime }
+            CryptoEntity.select { CryptoEntity.dateTime greaterEq fromDateTime and(CryptoEntity.dateTime lessEq toDateTime) }
                 .flatMap {
                     toCryptoDtoList(
                         exchangeName = it[CryptoEntity.exchange],
