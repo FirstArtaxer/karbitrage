@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.Database
 import java.time.LocalDateTime
 import java.util.concurrent.Executors
 import kotlin.reflect.full.createInstance
+import io.ktor.server.plugins.cors.routing.CORS
 
 
 fun main() {
@@ -37,6 +38,9 @@ fun Application.module() {
 fun Application.configureSerialization() {
     install(ContentNegotiation) {
         json()
+    }
+    install(CORS) {
+        anyHost()
     }
 }
 fun Application.configureRouting() {
