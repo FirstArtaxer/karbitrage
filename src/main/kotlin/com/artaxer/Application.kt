@@ -1,9 +1,11 @@
 package com.artaxer
 
+import com.artaxer.service.CryptoDto
 import com.artaxer.service.CryptoService
 import com.artaxer.service.PriceExtractor
 import com.artaxer.service.PriceService
-
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.typesafe.config.ConfigFactory
 import io.github.classgraph.ClassGraph
 import io.ktor.client.request.*
@@ -13,17 +15,19 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
-
+import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.sql.Database
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.concurrent.Executors
 import kotlin.reflect.full.createInstance
-import io.ktor.server.plugins.cors.routing.CORS
 
 
 fun main() {
@@ -43,6 +47,9 @@ fun Application.configureSerialization() {
         anyHost()
     }
 }
+private val pricesCache: Cache<String, List<CryptoDto>> = Caffeine.newBuilder()
+    .expireAfterWrite(Duration.ofMinutes(1))
+    .build()
 fun Application.configureRouting() {
     val cryptoService = CryptoService(database = configureDatabases())
     routing {
@@ -50,9 +57,29 @@ fun Application.configureRouting() {
             val fromDateTime = call.parameters["from"]?.toLocalDateTime() ?: error("from parameter should be filled")
             val toDateTime = call.parameters["to"]?.toLocalDateTime() ?: error("to parameter should be filled")
             val symbol = call.parameters["symbol"] ?: error("symbol parameter should be filled")
-            val crypto =
-                cryptoService.getPricesHistory(fromDateTime = fromDateTime, toDateTime = toDateTime, symbol = symbol)
-            call.respond(HttpStatusCode.OK, crypto)
+            val cacheKey = "$symbol-$fromDateTime-$toDateTime"
+            val cachedPrices = pricesCache.getIfPresent(cacheKey)
+            val prices = if (cachedPrices == null) {
+                val dbPrices = cryptoService.getPricesHistory(
+                    fromDateTime = fromDateTime,
+                    toDateTime = toDateTime,
+                    symbol = symbol
+                )
+                pricesCache.put(cacheKey, dbPrices)
+                dbPrices
+            } else
+                cachedPrices
+            call.respond(HttpStatusCode.OK, prices)
+        }
+        get("crypto/last-prices") {
+            val cachedLatestPrices = pricesCache.getIfPresent("latestPrices")
+            val latestPrices = if (cachedLatestPrices == null) {
+                val dbPrices = cryptoService.getLatestPrices()
+                pricesCache.put("latestPrices", dbPrices)
+                dbPrices
+            } else
+                cachedLatestPrices
+            call.respond(HttpStatusCode.OK, latestPrices)
         }
     }
 }

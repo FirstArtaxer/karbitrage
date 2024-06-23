@@ -57,14 +57,47 @@ class CryptoService(private val database: Database) {
                 }
         }
     }
+    suspend fun getLatestPrices(): List<CryptoDto> {
+        return dbQuery {
+            val subQuery = CryptoEntity
+                .slice(CryptoEntity.exchange, CryptoEntity.dateTime.max().alias("maxDateTime"))
+                .selectAll()
+                .groupBy(CryptoEntity.exchange)
+                .alias("latestPrices")
+
+            // Alias fields for easier reference
+            val subQueryExchange = subQuery[CryptoEntity.exchange]
+            val subQueryMaxDateTime = subQuery[CryptoEntity.dateTime.max().alias("maxDateTime")]
+
+            // Perform a join between the original table and the subquery to get the latest prices
+            CryptoEntity
+                .join(
+                    subQuery, JoinType.INNER,
+                    onColumn = CryptoEntity.exchange,
+                    otherColumn = subQueryExchange
+                )
+                .select { CryptoEntity.exchange eq subQueryExchange and (CryptoEntity.dateTime eq subQueryMaxDateTime) }
+                .flatMap {
+                    toCryptoDtoList(
+                        exchangeName = it[CryptoEntity.exchange],
+                        rawPrices = it[CryptoEntity.prices],
+                        dateTime = it[CryptoEntity.dateTime]
+                    )
+                }
+        }
+    }
     private fun toCryptoDtoList(
         exchangeName: String,
         rawPrices: String,
         dateTime: LocalDateTime,
-        symbol: String
+        symbol: String? = null
     ): List<CryptoDto> {
         return rawPrices.split(",")
-            .filter { it.lowercase().startsWith(symbol.lowercase()) }
+            .filter { pricePerSymbol ->
+                symbol?.let {
+                    pricePerSymbol.lowercase().startsWith(it.lowercase())
+                } ?: true
+            }
             .map {
                 val codeAndPrice = it.split("=")
                 CryptoDto(
