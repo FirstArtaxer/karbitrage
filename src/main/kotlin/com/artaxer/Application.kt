@@ -1,13 +1,11 @@
 package com.artaxer
 
-import com.artaxer.service.CryptoDto
-import com.artaxer.service.CryptoService
-import com.artaxer.service.PriceExtractor
-import com.artaxer.service.PriceService
+import com.artaxer.service.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.typesafe.config.ConfigFactory
 import io.github.classgraph.ClassGraph
+import io.github.classgraph.ClassInfoList
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -53,7 +51,7 @@ private val pricesCache: Cache<String, List<CryptoDto>> = Caffeine.newBuilder()
 fun Application.configureRouting() {
     val cryptoService = CryptoService(database = configureDatabases())
     routing {
-        get("crypto/prices") {
+        get("cryptos/prices") {
             val fromDateTime = call.parameters["from"]?.toLocalDateTime() ?: error("from parameter should be filled")
             val toDateTime = call.parameters["to"]?.toLocalDateTime() ?: error("to parameter should be filled")
             val symbol = call.parameters["symbol"] ?: error("symbol parameter should be filled")
@@ -71,7 +69,7 @@ fun Application.configureRouting() {
                 cachedPrices
             call.respond(HttpStatusCode.OK, prices)
         }
-        get("crypto/last-prices") {
+        get("cryptos/last-prices") {
             val cachedLatestPrices = pricesCache.getIfPresent("latestPrices")
             val latestPrices = if (cachedLatestPrices == null) {
                 val dbPrices = cryptoService.getLatestPrices()
@@ -80,6 +78,12 @@ fun Application.configureRouting() {
             } else
                 cachedLatestPrices
             call.respond(HttpStatusCode.OK, latestPrices)
+        }
+        get("symbols") {
+            call.respond(HttpStatusCode.OK, CryptoCode.entries.map { it.name })
+        }
+        get("exchanges") {
+            call.respond(HttpStatusCode.OK, ReflectionHelper.exchanges.map { it.simpleName })
         }
     }
 }
@@ -100,10 +104,7 @@ fun Application.configureRouting() {
  */
 fun Application.fetchAndSaveData() {
     val context = Executors.newFixedThreadPool(50).asCoroutineDispatcher()
-    val graphData = ClassGraph().enableAllInfo().acceptPackages("com.artaxer.service.exchange").scan()
-    val exchanges =
-        graphData.allClasses.filter { it.superclass?.name?.endsWith(PriceExtractor::class.java.simpleName) ?: false }
-    val exchangesWithFunctions = exchanges.map {
+    val exchangesWithFunctions = ReflectionHelper.exchanges.map {
         val exchangeClass = Class.forName(it.name)
         val request = exchangeClass.getMethod("getRequest").invoke(exchangeClass.kotlin.createInstance())
         val extractor = exchangeClass.getMethod("getExtractor").invoke(exchangeClass.kotlin.createInstance())
@@ -137,6 +138,13 @@ fun Application.fetchAndSaveData() {
             }
         }
     }
+}
+
+object ReflectionHelper {
+    private val graphData =
+        ClassGraph().enableAllInfo().acceptPackages("com.artaxer.service.exchange").scan()
+    val exchanges: ClassInfoList =
+        graphData.allClasses.filter { it.superclass?.name?.endsWith(PriceExtractor::class.java.simpleName) ?: false }
 }
 
 object AppConfig {
