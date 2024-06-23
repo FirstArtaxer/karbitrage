@@ -8,5 +8,5 @@ abstract class PriceExtractor {
 }
 
 enum class CryptoCode {
-    BTC, ETH, SOL, XRP, DOGE, TON
+    BTC, ETH, SOL, XRP, DOGE, TON, PEPE, TRX
 }
