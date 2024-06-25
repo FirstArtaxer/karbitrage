@@ -2,9 +2,7 @@ package com.artaxer.route
 
 import com.artaxer.ReflectionHelper
 import com.artaxer.configureDatabases
-import com.artaxer.service.CryptoCode
-import com.artaxer.service.CryptoDto
-import com.artaxer.service.CryptoService
+import com.artaxer.service.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.http.*
@@ -69,6 +67,7 @@ fun Application.configureRouting() {
             val toDateTime =
                 call.parameters["to"]?.toLocalDateTime() ?: throwBadRequestEx("to parameter should be filled")
             val symbol = call.parameters["symbol"] ?: throwBadRequestEx("symbol parameter should be filled")
+            val withMargins = call.parameters["withMargins"]
             val cacheKey = "$symbol-$fromDateTime-$toDateTime"
             val cachedPrices = pricesCache.getIfPresent(cacheKey)
             val prices = if (cachedPrices == null) {
@@ -81,7 +80,11 @@ fun Application.configureRouting() {
                 dbPrices
             } else
                 cachedPrices
-            call.respond(HttpStatusCode.OK, prices)
+
+            val result = withMargins?.let {
+                CryptoDtoWithCryptoMarginDto(prices = prices)
+            } ?: prices
+            call.respond(HttpStatusCode.OK, result)
         }
         get("cryptos/last-prices") {
             val cachedLatestPrices = pricesCache.getIfPresent("latestPrices")

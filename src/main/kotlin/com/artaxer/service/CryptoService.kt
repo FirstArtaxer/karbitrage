@@ -8,6 +8,8 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.kotlin.datetime.datetime
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @Serializable
 data class CryptoDto(
@@ -123,4 +125,77 @@ fun LocalDateTime.truncateToMinute(): LocalDateTime {
         0,
         0
     )
+}
+
+/**
+ * Extension function to calculate the margins between different exchanges.
+ *
+ * @receiver List<CryptoDto> A list of CryptoDto objects representing the cryptocurrency data.
+ * @return List<CryptoMarginDto> A list of CryptoMarginDto objects representing the calculated margins.
+ *
+ * @throws IllegalArgumentException if the list contains multiple symbols.
+ *
+ * Time Complexity: O(n log n + k^2), where n is the number of CryptoDto objects and
+ * k is the maximum size of any group with the same symbol and dateTime.
+ */
+fun List<CryptoDto>.buildMargins(): List<CryptoMarginDto> {
+    if (this.isEmpty()) return emptyList()
+
+    val symbol = this.first().symbol
+    if (this.any { it.symbol != symbol }) {
+        throw IllegalArgumentException("All CryptoDto objects must have the same symbol")
+    }
+
+    val margins = mutableListOf<CryptoMarginDto>()
+
+    // Sort by dateTime
+    val sortedDtos = this.sortedWith(compareBy { it.dateTime })
+
+    var start = 0
+    while (start < sortedDtos.size) {
+        val dateTime = sortedDtos[start].dateTime
+        var end = start
+
+        // Find the range of elements with the same dateTime
+        while (end < sortedDtos.size && sortedDtos[end].dateTime == dateTime) {
+            end++
+        }
+
+        // Calculate margins for the current range
+        for (i in start until end) {
+            for (j in i + 1 until end) {
+                val dto1 = sortedDtos[i]
+                val dto2 = sortedDtos[j]
+
+                val margin = (abs(dto1.price - dto2.price) * 100).roundToInt() / 100.0
+                val percentMargin = ((margin / ((dto1.price + dto2.price) / 2)) * 100 * 100).roundToInt() / 100.0
+
+                margins.add(
+                    CryptoMarginDto(
+                        exchange1 = dto1.exchange,
+                        exchange2 = dto2.exchange,
+                        margin = margin,
+                        percentMargin = percentMargin,
+                        dateTime = dateTime
+                    )
+                )
+            }
+        }
+
+        start = end
+    }
+
+    return margins
+}
+@Serializable
+data class CryptoMarginDto(
+    val exchange1: String,
+    val exchange2: String,
+    val margin: Double,
+    val percentMargin: Double,
+    val dateTime: LocalDateTime
+)
+@Serializable
+data class CryptoDtoWithCryptoMarginDto(val prices: List<CryptoDto>) {
+    val margins = this.prices.buildMargins()
 }

@@ -2,7 +2,6 @@ package com.artaxer.service
 
 import com.artaxer.ReflectionHelper
 import com.artaxer.configureDatabases
-import com.artaxer.parseToString
 import io.ktor.client.request.*
 import io.ktor.util.logging.*
 import kotlinx.coroutines.CoroutineScope
@@ -69,3 +68,4 @@ class DataProviderService {
         }
     }
 }
+fun Map<String, Double>.parseToString() = this.entries.joinToString(",")

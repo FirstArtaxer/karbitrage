@@ -61,5 +61,3 @@ fun configureDatabases() = Database.connect(
     driver = "org.postgresql.Driver",
     password = AppConfig.postgresPassword
 )
-
-fun Map<String, Double>.parseToString() = this.entries.joinToString(",")
