@@ -1,5 +1,9 @@
 package com.artaxer.service
 
+import com.artaxer.getDatabase
+import com.artaxer.service.event.EventHandler
+import com.artaxer.service.event.ExchangePriceEvent
+import io.ktor.util.logging.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.serializers.LocalDateTimeIso8601Serializer
@@ -20,8 +24,8 @@ data class CryptoDto(
     val dateTime: LocalDateTime
 )
 
-class CryptoService(private val database: Database) {
-
+class CryptoService : EventHandler<ExchangePriceEvent> {
+    private val logger = KtorSimpleLogger("com.artaxer.service.CryptoService")
     object CryptoEntity : Table() {
         val id = integer("id").autoIncrement()
         val exchange = varchar("exchange", length = 100)
@@ -30,21 +34,13 @@ class CryptoService(private val database: Database) {
         override var primaryKey = PrimaryKey(id)
     }
     init {
-        transaction(database) {
+        transaction(getDatabase()) {
             SchemaUtils.create(CryptoEntity)
         }
     }
 
     private suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
-
-    suspend fun save(exchangePrices: Triple<String, String, LocalDateTime>) = dbQuery {
-        CryptoEntity.insert {
-            it[exchange] = exchangePrices.first
-            it[prices] = exchangePrices.second
-            it[dateTime] = exchangePrices.third
-        }[CryptoEntity.id]
-    }
 
     suspend fun getPricesHistory(fromDateTime: LocalDateTime,toDateTime:LocalDateTime,symbol: String): List<CryptoDto> {
         return dbQuery {
@@ -110,6 +106,20 @@ class CryptoService(private val database: Database) {
                 )
             }
     }
+    override suspend fun handle(event: ExchangePriceEvent) {
+        runCatching {
+            dbQuery {
+                CryptoEntity.insert {
+                    it[exchange] = event.name
+                    it[prices] = event.prices.parseToString()
+                    it[dateTime] = event.dateTime
+                }[CryptoEntity.id]
+            }
+            logger.info("${event.name} saved!")
+        }.onFailure {
+            logger.info("${event.name} cannot saved! - ${it.stackTraceToString()}")
+        }
+    }
 }
 
 /**
@@ -126,7 +136,7 @@ fun LocalDateTime.truncateToMinute(): LocalDateTime {
         0
     )
 }
-
+fun Map<String, Double>.parseToString() = this.entries.joinToString(",")
 /**
  * Extension function to calculate the margins between different exchanges.
  *

@@ -1,7 +1,6 @@
 package com.artaxer.route
 
 import com.artaxer.ReflectionHelper
-import com.artaxer.configureDatabases
 import com.artaxer.service.*
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -59,7 +58,7 @@ private val pricesCache: Cache<String, List<CryptoDto>> = Caffeine.newBuilder()
     .build()
 
 fun Application.configureRouting() {
-    val cryptoService = CryptoService(database = configureDatabases())
+    val cryptoService = CryptoService()
     routing {
         get("cryptos/prices") {
             val fromDateTime =

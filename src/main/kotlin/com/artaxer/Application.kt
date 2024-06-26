@@ -13,7 +13,9 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
+import kotlinx.coroutines.asCoroutineDispatcher
 import org.jetbrains.exposed.sql.Database
+import java.util.concurrent.Executors
 
 
 fun main() {
@@ -41,6 +43,7 @@ fun Application.configureSerialization() {
     }
 }
 
+val context = Executors.newFixedThreadPool(50).asCoroutineDispatcher()
 object ReflectionHelper {
     private val graphData =
         ClassGraph().enableAllInfo().acceptPackages("com.artaxer.service.exchange").scan()
@@ -55,7 +58,7 @@ object AppConfig {
     val postgresPassword: String = config.getString("settings.postgres.password")
 }
 
-fun configureDatabases() = Database.connect(
+fun getDatabase() = Database.connect(
     url = AppConfig.postgresUrl,
     user = AppConfig.postgresUserName,
     driver = "org.postgresql.Driver",

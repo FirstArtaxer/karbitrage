@@ -1,20 +1,20 @@
 package com.artaxer.service
 
 import com.artaxer.ReflectionHelper
-import com.artaxer.configureDatabases
+import com.artaxer.context
+import com.artaxer.service.event.ExchangePriceEvent
 import io.ktor.client.request.*
 import io.ktor.util.logging.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.time.LocalDateTime
-import java.util.concurrent.Executors
 import kotlin.reflect.full.createInstance
+import kotlin.time.measureTimedValue
 
 class DataProviderService {
-    private val LOGGER = KtorSimpleLogger("com.artaxer.service.DataProviderService")
+    private val logger = KtorSimpleLogger("com.artaxer.service.DataProviderService")
 
     /**
      * This function scans for exchange services, extracts their respective request builders and price extractors,
@@ -31,16 +31,13 @@ class DataProviderService {
      *    - Saves the fetched prices along with the timestamp to the database.
      */
     fun fetchAndSaveData() {
-        val context = Executors.newFixedThreadPool(50).asCoroutineDispatcher()
         val exchangesWithFunctions = ReflectionHelper.exchanges.map {
             val exchangeClass = Class.forName(it.name)
             val request = exchangeClass.getMethod("getRequest").invoke(exchangeClass.kotlin.createInstance())
             val extractor = exchangeClass.getMethod("getExtractor").invoke(exchangeClass.kotlin.createInstance())
             Triple(it.simpleName, request as HttpRequestBuilder, extractor as ((String) -> Map<String, Double>))
         }
-        val cryptoService = CryptoService(database = configureDatabases())
         val priceService = PriceService()
-
         CoroutineScope(context = context).launch {
             while (true) {
                 delay(60000)
@@ -48,19 +45,17 @@ class DataProviderService {
                 exchangesWithFunctions.forEach { exchange ->
                     launch(context) {
                         runCatching {
-                            LOGGER.info("${exchange.first} fetched!")
-                            val exchangePrices =
+                            val (exchangePrices,timeTaken) = measureTimedValue {
                                 priceService.getPrices(httpRequest = exchange.second, extractor = exchange.third)
-                            cryptoService.save(
-                                exchangePrices = Triple(
-                                    exchange.first,
-                                    exchangePrices.parseToString(),
-                                    dateTime
-                                )
-                            )
-                            LOGGER.info("${exchange.first} saved!")
+                            }
+                            logger.info("${exchange.first} fetched in $timeTaken!")
+                            ExchangePriceEvent(
+                                name = exchange.first,
+                                prices = exchangePrices,
+                                dateTime = dateTime
+                            ).publish()
                         }.onFailure {
-                            LOGGER.error("${exchange.first} cannot saved! - ${it.stackTraceToString()}")
+                            logger.error("${exchange.first} cannot fetched! - ${it.stackTraceToString()}")
                         }
                     }
                 }
@@ -68,4 +63,3 @@ class DataProviderService {
         }
     }
 }
-fun Map<String, Double>.parseToString() = this.entries.joinToString(",")
