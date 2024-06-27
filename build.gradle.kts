@@ -26,6 +26,8 @@ repositories {
 }
 
 dependencies {
+    implementation("io.insert-koin:koin-ktor:3.5.6")
+    testImplementation("io.insert-koin:koin-test:3.5.6")
     implementation("io.ktor:ktor-server-status-pages:$ktor_version")
     implementation("io.ktor:ktor-server-cors:$ktor_version")
     implementation("io.ktor:ktor-server-core-jvm")

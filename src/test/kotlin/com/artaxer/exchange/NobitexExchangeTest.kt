@@ -1,11 +1,33 @@
 package com.artaxer.exchange
 
+import com.artaxer.koinModule
 import com.artaxer.service.exchange.NobitexExchange
+import org.junit.After
+import org.junit.Before
+import org.koin.core.component.inject
+import org.koin.core.context.GlobalContext.startKoin
+import org.koin.core.context.GlobalContext.stopKoin
+import org.koin.test.KoinTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class NobitexExchangeTest {
-    private val nobitexExchange = NobitexExchange()
+class NobitexExchangeTest : KoinTest {
+    // Inject the service you want to test
+    private val nobitexExchange: NobitexExchange by inject()
+
+    @Before
+    fun before() {
+        // Start Koin with the module(s) needed for your tests
+        startKoin {
+            modules(koinModule)
+        }
+    }
+
+    @After
+    fun after() {
+        // Stop Koin after each test
+        stopKoin()
+    }
     @Test
     fun `nobitex extractor should return latest price`(){
         val extractor = nobitexExchange.getExtractor()

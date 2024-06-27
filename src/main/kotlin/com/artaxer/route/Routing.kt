@@ -11,6 +11,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
+import org.koin.ktor.ext.inject
 import java.time.Duration
 
 fun Application.configureExceptions() {
@@ -58,7 +59,7 @@ private val pricesCache: Cache<String, List<CryptoDto>> = Caffeine.newBuilder()
     .build()
 
 fun Application.configureRouting() {
-    val cryptoService = CryptoService()
+    val cryptoService: CryptoService by inject()
     routing {
         get("cryptos/prices") {
             val fromDateTime =

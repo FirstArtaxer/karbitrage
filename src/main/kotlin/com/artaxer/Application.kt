@@ -2,8 +2,12 @@ package com.artaxer
 
 import com.artaxer.route.configureExceptions
 import com.artaxer.route.configureRouting
+import com.artaxer.service.CryptoService
 import com.artaxer.service.DataProviderService
 import com.artaxer.service.PriceExtractor
+import com.artaxer.service.PriceService
+import com.artaxer.service.event.EventDispatcher
+import com.artaxer.service.exchange.NobitexExchange
 import com.typesafe.config.ConfigFactory
 import io.github.classgraph.ClassGraph
 import io.github.classgraph.ClassInfoList
@@ -15,6 +19,9 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import kotlinx.coroutines.asCoroutineDispatcher
 import org.jetbrains.exposed.sql.Database
+import org.koin.dsl.module
+import org.koin.ktor.ext.inject
+import org.koin.ktor.plugin.Koin
 import java.util.concurrent.Executors
 
 
@@ -24,14 +31,23 @@ fun main() {
 }
 
 fun Application.module() {
+    configureKoin()
     configureSerialization()
     configureRouting()
     configureExceptions()
     initDataProvider()
 }
+val koinModule = module {
+    single { CryptoService() }
+    single { PriceService() }
+    single { EventDispatcher() }
+    single { DataProviderService(get()) }
+    single { NobitexExchange() }
+}
 
 fun Application.initDataProvider() {
-    DataProviderService().fetchAndSaveData()
+    val dataProviderService: DataProviderService by inject()
+    dataProviderService.fetchAndSaveData()
 }
 
 fun Application.configureSerialization() {
@@ -40,6 +56,11 @@ fun Application.configureSerialization() {
     }
     install(CORS) {
         anyHost()
+    }
+}
+fun Application.configureKoin() {
+    install(Koin) {
+        modules(koinModule)
     }
 }
 

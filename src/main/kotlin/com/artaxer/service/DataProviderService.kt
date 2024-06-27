@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 import kotlin.reflect.full.createInstance
 import kotlin.time.measureTimedValue
 
-class DataProviderService {
+class DataProviderService(private val priceService: PriceService) {
     private val logger = KtorSimpleLogger("com.artaxer.service.DataProviderService")
 
     /**
@@ -37,7 +37,6 @@ class DataProviderService {
             val extractor = exchangeClass.getMethod("getExtractor").invoke(exchangeClass.kotlin.createInstance())
             Triple(it.simpleName, request as HttpRequestBuilder, extractor as ((String) -> Map<String, Double>))
         }
-        val priceService = PriceService()
         CoroutineScope(context = context).launch {
             while (true) {
                 delay(60000)

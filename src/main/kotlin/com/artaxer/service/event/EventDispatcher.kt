@@ -1,6 +1,8 @@
 package com.artaxer.service.event
 
 import com.artaxer.service.CryptoService
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 class EventDispatcher {
     private val handlers = mutableMapOf<Class<out BaseEvent>, MutableList<EventHandler<out BaseEvent>>>()
@@ -18,10 +20,10 @@ class EventDispatcher {
     }
 }
 
-object AppEvent {
-    val eventDispatcher: EventDispatcher by lazy {
-        val eventDispatcher = EventDispatcher()
+object AppEvent : KoinComponent {
+    val eventDispatcher: EventDispatcher by inject()
+
+    init {
         eventDispatcher.register(ExchangePriceEvent::class.java, CryptoService())
-        eventDispatcher
     }
 }
