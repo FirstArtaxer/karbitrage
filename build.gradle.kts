@@ -4,6 +4,7 @@ val exposed_version: String by project
 val h2_version: String by project
 val postgres_version: String by project
 val ktor_version: String by project
+val arrow_version: String by project
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -26,6 +27,9 @@ repositories {
 }
 
 dependencies {
+    implementation("io.arrow-kt:arrow-core:$arrow_version")
+    implementation("io.arrow-kt:arrow-fx-coroutines:$arrow_version")
+    implementation("io.arrow-kt:arrow-resilience:$arrow_version")
     implementation("io.insert-koin:koin-ktor:3.5.6")
     testImplementation("io.insert-koin:koin-test:3.5.6")
     implementation("io.ktor:ktor-server-status-pages:$ktor_version")
