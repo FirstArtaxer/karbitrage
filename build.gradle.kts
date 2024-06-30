@@ -43,6 +43,8 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktor_version")
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
     implementation("io.github.classgraph:classgraph:4.8.154")
+    implementation("com.influxdb:influxdb-client-kotlin:6.6.0")
+    implementation("com.zaxxer:HikariCP:5.1.0")
     testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
