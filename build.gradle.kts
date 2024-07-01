@@ -30,6 +30,7 @@ dependencies {
     implementation("io.arrow-kt:arrow-core:$arrow_version")
     implementation("io.arrow-kt:arrow-fx-coroutines:$arrow_version")
     implementation("io.arrow-kt:arrow-resilience:$arrow_version")
+    implementation("io.ktor:ktor-server-rate-limit:$ktor_version")
     implementation("io.insert-koin:koin-ktor:3.5.6")
     testImplementation("io.insert-koin:koin-test:3.5.6")
     implementation("io.ktor:ktor-server-status-pages:$ktor_version")

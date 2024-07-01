@@ -17,12 +17,14 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.plugins.ratelimit.*
 import kotlinx.coroutines.asCoroutineDispatcher
 import org.jetbrains.exposed.sql.Database
 import org.koin.dsl.module
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import java.util.concurrent.Executors
+import kotlin.time.Duration.Companion.seconds
 
 
 fun main() {
@@ -36,6 +38,15 @@ fun Application.module() {
     configureRouting()
     configureExceptions()
     initDataProvider()
+    rateLimit()
+}
+
+fun Application.rateLimit() {
+    install(RateLimit) {
+        global {
+            rateLimiter(limit = 50, refillPeriod = 60.seconds)
+        }
+    }
 }
 val koinModule = module {
     single { CryptoService() }
