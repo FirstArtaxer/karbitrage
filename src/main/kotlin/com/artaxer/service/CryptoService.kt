@@ -116,6 +116,18 @@ class CryptoService : EventHandler<ExchangePriceEvent> {
                 }[CryptoEntity.id]
             }
             logger.info("${event.name} saved!")
+
+            /**
+             * produce prices for live data via sse
+             */
+            toCryptoDtoList(
+                exchangeName = event.name,
+                rawPrices = event.prices.parseToString(),
+                dateTime = event.dateTime
+            )
+                .forEach {
+                    PriceBroker.produce(it)
+                }
         }.onFailure {
             logger.info("${event.name} cannot saved! - ${it.stackTraceToString()}")
         }

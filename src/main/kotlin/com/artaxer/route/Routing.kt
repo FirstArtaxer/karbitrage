@@ -9,8 +9,11 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.*
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.koin.ktor.ext.inject
 import java.time.Duration
 
@@ -59,8 +62,22 @@ private val pricesCache: Cache<String, List<CryptoDto>> = Caffeine.newBuilder()
     .build()
 
 fun Application.configureRouting() {
+    val jsonSerializer = Json
     val cryptoService: CryptoService by inject()
     routing {
+        /**
+         * this route emit prices via sse method
+         */
+        get("cryptos/prices/live") {
+                call.response.cacheControl(CacheControl.NoCache(null))
+                call.respondBytesWriter(contentType = ContentType.Text.EventStream) {
+                    PriceBroker.priceFlow.collect { cryptoDto ->
+                    writeStringUtf8(jsonSerializer.encodeToString(cryptoDto))
+                    writeStringUtf8("\n")
+                    flush()
+                }
+            }
+        }
         get("cryptos/prices") {
             val fromDateTime =
                 call.parameters["from"]?.toLocalDateTime() ?: throwBadRequestEx("from parameter should be filled")
