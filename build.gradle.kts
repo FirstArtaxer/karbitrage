@@ -53,4 +53,5 @@ dependencies {
     implementation("io.github.classgraph:classgraph:4.8.154")
     testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation("io.mockk:mockk:1.13.11")
 }
