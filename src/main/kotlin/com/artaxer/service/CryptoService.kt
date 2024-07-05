@@ -221,3 +221,4 @@ data class CryptoMarginDto(
 data class CryptoDtoWithCryptoMarginDto(val prices: List<CryptoDto>) {
     val margins = this.prices.buildMargins()
 }
+fun List<CryptoDto>.addCryptoMarginDto() = CryptoDtoWithCryptoMarginDto(prices = this)

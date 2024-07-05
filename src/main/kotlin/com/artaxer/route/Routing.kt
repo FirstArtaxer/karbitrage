@@ -17,6 +17,68 @@ import kotlinx.serialization.json.Json
 import org.koin.ktor.ext.inject
 import java.time.Duration
 
+fun Application.configureRouting() {
+    val jsonSerializer = Json
+    val cryptoService: CryptoService by inject()
+    routing {
+        /**
+         * this route emit prices via sse method
+         */
+        get("cryptos/prices/live") {
+            val symbol = call.parameters["symbol"]
+            call.response.cacheControl(CacheControl.NoCache(null))
+            call.respondBytesWriter(contentType = ContentType.Text.EventStream) {
+                PriceBroker.priceFlow.collect { cryptoDto ->
+                    if (symbol != null && cryptoDto.symbol != symbol) {
+                        return@collect
+                    }
+                    writeStringUtf8(jsonSerializer.encodeToString(cryptoDto))
+                    writeStringUtf8("\n")
+                    flush()
+                }
+            }
+        }
+        get("cryptos/prices") {
+            val fromDateTime =
+                call.parameters["from"]?.toLocalDateTime() ?: throwBadRequestEx("from parameter should be filled")
+            val toDateTime =
+                call.parameters["to"]?.toLocalDateTime() ?: throwBadRequestEx("to parameter should be filled")
+            val symbol = call.parameters["symbol"] ?: throwBadRequestEx("symbol parameter should be filled")
+            val withMargins = call.parameters["withMargins"]
+            val cacheKey = "$symbol-$fromDateTime-$toDateTime"
+            val cachedPrices = pricesCache.getIfPresent(cacheKey)
+            val prices = if (cachedPrices == null) {
+                val dbPrices = cryptoService.getPricesHistory(
+                    fromDateTime = fromDateTime,
+                    toDateTime = toDateTime,
+                    symbol = symbol
+                )
+                pricesCache.put(cacheKey, dbPrices)
+                dbPrices
+            } else
+                cachedPrices
+
+            val result = withMargins?.let { prices.addCryptoMarginDto() } ?: prices
+            call.respond(HttpStatusCode.OK, result)
+        }
+        get("cryptos/last-prices") {
+            val cachedLatestPrices = pricesCache.getIfPresent("latestPrices")
+            val latestPrices = if (cachedLatestPrices == null) {
+                val dbPrices = cryptoService.getLatestPrices()
+                pricesCache.put("latestPrices", dbPrices)
+                dbPrices
+            } else
+                cachedLatestPrices
+            call.respond(HttpStatusCode.OK, latestPrices)
+        }
+        get("symbols") {
+            call.respond(HttpStatusCode.OK, CryptoCode.entries.map { it.name })
+        }
+        get("exchanges") {
+            call.respond(HttpStatusCode.OK, ReflectionHelper.exchanges.map { it.simpleName })
+        }
+    }
+}
 fun Application.configureExceptions() {
     install(StatusPages) {
         exception<Throwable> { call, throwable ->
@@ -60,64 +122,3 @@ fun throwNotFoundEx(message: String): Nothing = throw BadRequestException(messag
 private val pricesCache: Cache<String, List<CryptoDto>> = Caffeine.newBuilder()
     .expireAfterWrite(Duration.ofMinutes(1))
     .build()
-
-fun Application.configureRouting() {
-    val jsonSerializer = Json
-    val cryptoService: CryptoService by inject()
-    routing {
-        /**
-         * this route emit prices via sse method
-         */
-        get("cryptos/prices/live") {
-                call.response.cacheControl(CacheControl.NoCache(null))
-                call.respondBytesWriter(contentType = ContentType.Text.EventStream) {
-                    PriceBroker.priceFlow.collect { cryptoDto ->
-                    writeStringUtf8(jsonSerializer.encodeToString(cryptoDto))
-                    writeStringUtf8("\n")
-                    flush()
-                }
-            }
-        }
-        get("cryptos/prices") {
-            val fromDateTime =
-                call.parameters["from"]?.toLocalDateTime() ?: throwBadRequestEx("from parameter should be filled")
-            val toDateTime =
-                call.parameters["to"]?.toLocalDateTime() ?: throwBadRequestEx("to parameter should be filled")
-            val symbol = call.parameters["symbol"] ?: throwBadRequestEx("symbol parameter should be filled")
-            val withMargins = call.parameters["withMargins"]
-            val cacheKey = "$symbol-$fromDateTime-$toDateTime"
-            val cachedPrices = pricesCache.getIfPresent(cacheKey)
-            val prices = if (cachedPrices == null) {
-                val dbPrices = cryptoService.getPricesHistory(
-                    fromDateTime = fromDateTime,
-                    toDateTime = toDateTime,
-                    symbol = symbol
-                )
-                pricesCache.put(cacheKey, dbPrices)
-                dbPrices
-            } else
-                cachedPrices
-
-            val result = withMargins?.let {
-                CryptoDtoWithCryptoMarginDto(prices = prices)
-            } ?: prices
-            call.respond(HttpStatusCode.OK, result)
-        }
-        get("cryptos/last-prices") {
-            val cachedLatestPrices = pricesCache.getIfPresent("latestPrices")
-            val latestPrices = if (cachedLatestPrices == null) {
-                val dbPrices = cryptoService.getLatestPrices()
-                pricesCache.put("latestPrices", dbPrices)
-                dbPrices
-            } else
-                cachedLatestPrices
-            call.respond(HttpStatusCode.OK, latestPrices)
-        }
-        get("symbols") {
-            call.respond(HttpStatusCode.OK, CryptoCode.entries.map { it.name })
-        }
-        get("exchanges") {
-            call.respond(HttpStatusCode.OK, ReflectionHelper.exchanges.map { it.simpleName })
-        }
-    }
-}
