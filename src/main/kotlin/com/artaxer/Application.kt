@@ -85,9 +85,9 @@ object ReflectionHelper {
 
 object AppConfig {
     private val config = ConfigFactory.load()
-    val postgresUrl: String = config.getString("settings.postgres.url")
-    val postgresUserName: String = config.getString("settings.postgres.username")
-    val postgresPassword: String = config.getString("settings.postgres.password")
+    val postgresUrl: String = config.getString("settings.postgres.url") ?: "jdbc:postgresql://localhost:5432/karbitrage"
+    val postgresUserName: String = config.getString("settings.postgres.username") ?: "postgres"
+    val postgresPassword: String = config.getString("settings.postgres.password") ?: "mypassword"
 }
 
 fun getDatabase() = Database.connect(

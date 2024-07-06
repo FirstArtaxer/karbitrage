@@ -131,6 +131,14 @@ class NewExchangePriceExtractor : PriceExtractor() {
     ./gradlew test
     ```
 
+### Running with Docker
+
+To build and run the application using Docker Compose, execute the following command in the project directory:
+ 
+```sh
+docker-compose up --build
+```
+
 ## Contributing
 
 Contributions are welcome! Please fork the repository and create a pull request.
