@@ -13,6 +13,7 @@ import io.github.classgraph.ClassGraph
 import io.github.classgraph.ClassInfoList
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.config.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
@@ -84,15 +85,24 @@ object ReflectionHelper {
 }
 
 object AppConfig {
-    private val config = ConfigFactory.load()
-    val postgresUrl: String = config.getString("settings.postgres.url") ?: "jdbc:postgresql://localhost:5432/karbitrage"
-    val postgresUserName: String = config.getString("settings.postgres.username") ?: "postgres"
-    val postgresPassword: String = config.getString("settings.postgres.password") ?: "mypassword"
+    private val environment = System.getenv("KTOR_ENV") ?: "test"
+    private val configFileName = when (environment) {
+        "test" -> "application-test.conf"
+        "develop" -> "application-dev.conf"
+        "prod" -> "application.conf"
+        else -> error("config file not defined!")
+    }
+
+    private val config = HoconApplicationConfig(ConfigFactory.load(configFileName))
+    val databaseUrl: String = config.tryGetString("ktor.database.url")!!
+    val databaseUserName: String = config.tryGetString("ktor.database.user")!!
+    val databasePassword: String = config.tryGetString("ktor.database.password")!!
+    val databaseDriver: String = config.tryGetString("ktor.database.driver")!!
 }
 
 fun getDatabase() = Database.connect(
-    url = AppConfig.postgresUrl,
-    user = AppConfig.postgresUserName,
-    driver = "org.postgresql.Driver",
-    password = AppConfig.postgresPassword
+    url = AppConfig.databaseUrl,
+    user = AppConfig.databaseUserName,
+    driver = AppConfig.databaseDriver,
+    password = AppConfig.databasePassword
 )
