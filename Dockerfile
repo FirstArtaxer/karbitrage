@@ -27,4 +27,4 @@ COPY --from=build /karbitrage/build/libs/karbitrage-all.jar /karbitrage/karbitra
 EXPOSE 8080
 
 # Command to run the application
-CMD ["java", "-jar", "karbitrage.jar"]
+CMD ["java", "-jar", "-Denv=prod", "karbitrage.jar"]

@@ -85,19 +85,21 @@ object ReflectionHelper {
 }
 
 object AppConfig {
-    private val environment = System.getenv("KTOR_ENV") ?: "test"
-    private val configFileName = when (environment) {
-        "test" -> "application-test.conf"
-        "develop" -> "application-dev.conf"
-        "prod" -> "application.conf"
-        else -> error("config file not defined!")
-    }
+    private fun getConfig(): ApplicationConfig {
+        val environment = System.getenv("env") ?: "test"
+        val configFileName = when (environment) {
+            "test" -> "application-test.conf"
+            "develop" -> "application-dev.conf"
+            "prod" -> "application.conf"
+            else -> error("config file not defined!")
+        }
 
-    private val config = HoconApplicationConfig(ConfigFactory.load(configFileName))
-    val databaseUrl: String = config.tryGetString("ktor.database.url")!!
-    val databaseUserName: String = config.tryGetString("ktor.database.user")!!
-    val databasePassword: String = config.tryGetString("ktor.database.password")!!
-    val databaseDriver: String = config.tryGetString("ktor.database.driver")!!
+        return HoconApplicationConfig(ConfigFactory.load(configFileName))
+    }
+    val databaseUrl: String = getConfig().tryGetString("ktor.database.url")!!
+    val databaseUserName: String = getConfig().tryGetString("ktor.database.user")!!
+    val databasePassword: String = getConfig().tryGetString("ktor.database.password")!!
+    val databaseDriver: String = getConfig().tryGetString("ktor.database.driver")!!
 }
 
 fun getDatabase() = Database.connect(
