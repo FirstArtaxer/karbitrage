@@ -86,7 +86,7 @@ object ReflectionHelper {
 
 object AppConfig {
     private fun getConfig(): ApplicationConfig {
-        val environment = System.getenv("env") ?: "test"
+        val environment = System.getProperty("env") ?: "test"
         val configFileName = when (environment) {
             "test" -> "application-test.conf"
             "develop" -> "application-dev.conf"
